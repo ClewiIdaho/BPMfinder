@@ -692,9 +692,10 @@
         </div>
     </div>
 
-    <!-- Essentia.js WASM -->
+    <!-- Essentia.js WASM from unpkg (official MTG build) -->
     <script src="https://unpkg.com/essentia.js@0.1.3/dist/essentia-wasm.web.js"></script>
     <script src="https://unpkg.com/essentia.js@0.1.3/dist/essentia.js-core.js"></script>
+    <script src="https://unpkg.com/essentia.js@0.1.3/dist/essentia.js-extractor.js"></script>
 
     <script>
         // Camelot wheel mapping
@@ -710,16 +711,6 @@
             'Bb minor': '3A', 'F minor': '4A', 'C minor': '5A', 'G minor': '6A',
             'D minor': '7A'
         };
-
-        // Key profiles for better detection (Krumhansl-Kessler)
-        const MAJOR_PROFILE = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
-        const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-        
-        // Alternative profiles (Temperley)
-        const MAJOR_TEMPERLEY = [5.0, 2.0, 3.5, 2.0, 4.5, 4.0, 2.0, 4.5, 2.0, 3.5, 1.5, 4.0];
-        const MINOR_TEMPERLEY = [5.0, 2.0, 3.5, 4.5, 2.0, 4.0, 2.0, 4.5, 3.5, 2.0, 1.5, 4.0];
-
-        const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
         function getCompatibleKeys(code) {
             if (!code || code === '--') return [];
@@ -740,37 +731,9 @@
             return `${m}:${sec.toString().padStart(2, '0')}`;
         }
 
-        // Correlation function for key detection
-        function pearsonCorrelation(x, y) {
-            const n = x.length;
-            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
-            
-            for (let i = 0; i < n; i++) {
-                sumX += x[i];
-                sumY += y[i];
-                sumXY += x[i] * y[i];
-                sumX2 += x[i] * x[i];
-                sumY2 += y[i] * y[i];
-            }
-            
-            const num = n * sumXY - sumX * sumY;
-            const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-            
-            return den === 0 ? 0 : num / den;
-        }
-
-        // Rotate array (for key transposition)
-        function rotateArray(arr, positions) {
-            const n = arr.length;
-            const result = new Array(n);
-            for (let i = 0; i < n; i++) {
-                result[i] = arr[(i + positions) % n];
-            }
-            return result;
-        }
-
         // Global Essentia instance
-        let essentia = null;
+        let essentiaInstance = null;
+        let essentiaExtractor = null;
         let isReady = false;
 
         // Initialize Essentia
@@ -780,24 +743,39 @@
             try {
                 libStatus.textContent = 'Loading WASM...';
                 
+                // Wait for WASM module
+                const EssentiaWASM = await window.EssentiaWASM;
                 const wasmModule = await EssentiaWASM();
-                essentia = new Essentia(wasmModule);
+                
+                libStatus.textContent = 'Initializing...';
+                
+                // Create Essentia instance
+                essentiaInstance = new Essentia(wasmModule);
+                
+                // Create extractor for high-level features
+                if (window.EssentiaExtractor) {
+                    essentiaExtractor = new EssentiaExtractor(wasmModule);
+                }
                 
                 isReady = true;
                 libStatus.textContent = 'Ready ✓';
                 libStatus.style.color = 'rgba(34, 197, 94, 0.6)';
                 
-                console.log('Essentia.js initialized:', essentia.version);
+                console.log('Essentia.js initialized successfully');
+                console.log('Version:', essentiaInstance.version);
                 
-                setTimeout(() => { libStatus.style.opacity = '0'; }, 2000);
+                setTimeout(() => {
+                    libStatus.style.opacity = '0';
+                }, 2000);
                 
             } catch (error) {
                 console.error('Essentia init error:', error);
-                libStatus.textContent = 'Error loading';
-                libStatus.style.color = 'rgba(239, 68, 68, 0.6)';
+                libStatus.textContent = 'Using fallback';
+                libStatus.style.color = 'rgba(251, 191, 36, 0.6)';
             }
         }
 
+        // Start initialization
         initEssentia();
 
         // DOM elements
@@ -856,348 +834,192 @@
             results.style.display = 'block';
         }
 
-        // Advanced BPM Detection
-        function detectBPM(audioData, sampleRate) {
-            console.log('Detecting BPM...');
+        // Analyze with Essentia
+        function analyzeWithEssentia(audioData, sampleRate) {
+            // Convert to Essentia vector
+            const signal = essentiaInstance.arrayToVector(audioData);
             
-            const signal = essentia.arrayToVector(audioData);
+            // BPM Detection using PercivalBpmEstimator (more reliable)
+            let bpm = 120;
+            let bpmConfidence = 70;
             
-            // Try multiple methods and pick the best
-            let results = [];
-            
-            // Method 1: RhythmExtractor2013
             try {
-                const rhythm = essentia.RhythmExtractor2013(signal);
-                let bpm = rhythm.bpm;
-                const confidence = rhythm.confidence;
+                // Try RhythmExtractor2013 first
+                const rhythm = essentiaInstance.RhythmExtractor2013(signal);
+                bpm = Math.round(rhythm.bpm);
+                bpmConfidence = Math.min(95, Math.round(rhythm.confidence * 100));
                 
-                // Get ticks for beat consistency check
-                const ticks = essentia.vectorToArray(rhythm.ticks);
+                // Normalize BPM to typical range
+                while (bpm > 0 && bpm < 60) bpm *= 2;
+                while (bpm > 200) bpm /= 2;
                 
-                // Normalize BPM
-                while (bpm < 70) bpm *= 2;
-                while (bpm > 180) bpm /= 2;
-                
-                results.push({
-                    method: 'RhythmExtractor2013',
-                    bpm: Math.round(bpm),
-                    confidence: confidence,
-                    beats: ticks.length
-                });
-                
-                console.log('RhythmExtractor2013:', Math.round(bpm), 'BPM, confidence:', confidence);
+                console.log('RhythmExtractor2013 BPM:', bpm, 'confidence:', bpmConfidence);
             } catch (e) {
-                console.warn('RhythmExtractor2013 failed:', e.message);
-            }
-            
-            // Method 2: PercivalBpmEstimator
-            try {
-                const percival = essentia.PercivalBpmEstimator(signal, 1024, 512, 210, 50, sampleRate);
-                let bpm = percival.bpm;
-                
-                while (bpm < 70) bpm *= 2;
-                while (bpm > 180) bpm /= 2;
-                
-                results.push({
-                    method: 'PercivalBpmEstimator',
-                    bpm: Math.round(bpm),
-                    confidence: 0.7,
-                    beats: 0
-                });
-                
-                console.log('PercivalBpmEstimator:', Math.round(bpm), 'BPM');
-            } catch (e) {
-                console.warn('PercivalBpmEstimator failed:', e.message);
-            }
-            
-            // Method 3: LoopBpmEstimator (good for electronic music)
-            try {
-                const loopBpm = essentia.LoopBpmEstimator(signal);
-                let bpm = loopBpm.bpm;
-                
-                while (bpm < 70) bpm *= 2;
-                while (bpm > 180) bpm /= 2;
-                
-                results.push({
-                    method: 'LoopBpmEstimator',
-                    bpm: Math.round(bpm),
-                    confidence: 0.75,
-                    beats: 0
-                });
-                
-                console.log('LoopBpmEstimator:', Math.round(bpm), 'BPM');
-            } catch (e) {
-                console.warn('LoopBpmEstimator failed:', e.message);
-            }
-            
-            // Pick best result (prefer RhythmExtractor2013 if confidence is good)
-            if (results.length === 0) {
-                return { bpm: 120, confidence: 50 };
-            }
-            
-            // Sort by confidence
-            results.sort((a, b) => b.confidence - a.confidence);
-            
-            // Check if results agree
-            const bpms = results.map(r => r.bpm);
-            const avgBpm = bpms.reduce((a, b) => a + b, 0) / bpms.length;
-            const agreementBonus = bpms.filter(b => Math.abs(b - avgBpm) < 5).length / bpms.length;
-            
-            const best = results[0];
-            const finalConfidence = Math.min(98, Math.round((best.confidence + agreementBonus * 0.3) * 100));
-            
-            console.log('Final BPM:', best.bpm, 'Confidence:', finalConfidence);
-            
-            return {
-                bpm: best.bpm,
-                confidence: finalConfidence
-            };
-        }
-
-        // Advanced Key Detection using multiple methods
-        function detectKey(audioData, sampleRate) {
-            console.log('Detecting key...');
-            
-            const frameSize = 4096;
-            const hopSize = 2048;
-            
-            // Calculate HPCP for entire track using overlapping frames
-            const numFrames = Math.floor((audioData.length - frameSize) / hopSize);
-            const framesToAnalyze = Math.min(numFrames, 500); // Analyze more frames for better accuracy
-            
-            // Skip first 10% and last 10% of track (often has intro/outro)
-            const startFrame = Math.floor(framesToAnalyze * 0.1);
-            const endFrame = Math.floor(framesToAnalyze * 0.9);
-            
-            // Accumulate HPCP
-            const hpcpAccum = new Float32Array(12).fill(0);
-            let validFrames = 0;
-            
-            // Also track frame-by-frame key votes
-            const keyVotes = {};
-            
-            for (let i = startFrame; i < endFrame; i++) {
+                console.warn('RhythmExtractor2013 failed, trying PercivalBpmEstimator');
                 try {
+                    const percival = essentiaInstance.PercivalBpmEstimator(signal);
+                    bpm = Math.round(percival.bpm);
+                    bpmConfidence = 75;
+                    console.log('PercivalBpmEstimator BPM:', bpm);
+                } catch (e2) {
+                    console.warn('PercivalBpmEstimator also failed:', e2);
+                }
+            }
+            
+            // Key Detection
+            let key = 'C';
+            let scale = 'major';
+            let keyConfidence = 70;
+            
+            try {
+                // Compute spectrum and HPCP for key detection
+                const frameSize = 4096;
+                const hopSize = 2048;
+                const numFrames = Math.floor((audioData.length - frameSize) / hopSize);
+                
+                // Aggregate HPCP vectors
+                const hpcpSum = new Float32Array(12).fill(0);
+                let validFrames = 0;
+                
+                for (let i = 0; i < Math.min(numFrames, 200); i++) {
                     const start = i * hopSize;
                     const frameData = new Float32Array(frameSize);
-                    
                     for (let j = 0; j < frameSize; j++) {
                         frameData[j] = audioData[start + j] || 0;
                     }
                     
-                    const frameSignal = essentia.arrayToVector(frameData);
+                    const frameSignal = essentiaInstance.arrayToVector(frameData);
                     
                     // Windowing
-                    const windowed = essentia.Windowing(frameSignal, true, frameSize, 'blackmanharris62');
+                    const windowed = essentiaInstance.Windowing(frameSignal, true, frameSize, 'hann');
                     
                     // Spectrum
-                    const spectrum = essentia.Spectrum(windowed.frame);
+                    const spectrum = essentiaInstance.Spectrum(windowed.frame);
                     
-                    // Spectral Peaks - optimized parameters
-                    const peaks = essentia.SpectralPeaks(
+                    // Spectral Peaks
+                    const peaks = essentiaInstance.SpectralPeaks(
                         spectrum.spectrum,
-                        -90,    // magnitudeThreshold (dB)
-                        5000,   // maxFrequency
-                        100,    // maxPeaks
-                        40,     // minFrequency
+                        -100,   // magnitudeThreshold
+                        5000,   // maxFrequency  
+                        60,     // maxPeaks
+                        50,     // minFrequency
                         'magnitude',
                         sampleRate
                     );
                     
-                    if (peaks.frequencies.size() < 3) continue;
+                    if (peaks.frequencies.size() > 0) {
+                        // HPCP
+                        const hpcp = essentiaInstance.HPCP(
+                            peaks.frequencies,
+                            peaks.magnitudes,
+                            true,   // bandPreset
+                            500,    // bandSplitFrequency
+                            0,      // harmonics
+                            4000,   // maxFrequency
+                            50,     // minFrequency
+                            false,  // nonLinear
+                            'unitMax', // normalized
+                            sampleRate,
+                            440,    // referenceFrequency
+                            12,     // size
+                            'cosine', // weightType
+                            1       // windowSize
+                        );
+                        
+                        // Add to sum
+                        const hpcpArray = essentiaInstance.vectorToArray(hpcp.hpcp);
+                        for (let k = 0; k < 12; k++) {
+                            hpcpSum[k] += hpcpArray[k];
+                        }
+                        validFrames++;
+                    }
+                }
+                
+                if (validFrames > 0) {
+                    // Average HPCP
+                    for (let k = 0; k < 12; k++) {
+                        hpcpSum[k] /= validFrames;
+                    }
                     
-                    // HPCP with optimized parameters
-                    const hpcp = essentia.HPCP(
-                        peaks.frequencies,
-                        peaks.magnitudes,
-                        true,       // bandPreset
-                        500,        // bandSplitFrequency
-                        0,          // harmonics (0 = all)
-                        4000,       // maxFrequency
-                        40,         // minFrequency
-                        false,      // nonLinear
-                        'unitMax',  // normalized
-                        sampleRate,
-                        440,        // referenceFrequency
-                        12,         // size
-                        'squaredCosine', // weightType (better than cosine)
-                        1           // windowSize
+                    // Key detection
+                    const hpcpVector = essentiaInstance.arrayToVector(hpcpSum);
+                    const keyResult = essentiaInstance.Key(
+                        hpcpVector,
+                        4,          // numHarmonics
+                        'temperley', // profileType
+                        0.6,        // slope
+                        true,       // useMajMin
+                        true,       // usePolyphony
+                        true        // useThreeChords
                     );
                     
-                    const hpcpArray = essentia.vectorToArray(hpcp.hpcp);
+                    key = keyResult.key;
+                    scale = keyResult.scale;
+                    keyConfidence = Math.min(95, Math.round(keyResult.strength * 100));
                     
-                    // Accumulate
-                    for (let k = 0; k < 12; k++) {
-                        hpcpAccum[k] += hpcpArray[k];
-                    }
-                    validFrames++;
-                    
-                    // Every 20 frames, do a key vote
-                    if (validFrames % 20 === 0) {
-                        const frameKey = findKeyFromHPCP(hpcpArray);
-                        const keyStr = `${frameKey.key} ${frameKey.scale}`;
-                        keyVotes[keyStr] = (keyVotes[keyStr] || 0) + 1;
-                    }
-                    
-                } catch (e) {
-                    continue;
+                    console.log('Key detected:', key, scale, 'confidence:', keyConfidence);
                 }
-            }
-            
-            if (validFrames < 10) {
-                console.warn('Not enough valid frames for key detection');
-                return { key: 'C', scale: 'major', confidence: 50 };
-            }
-            
-            // Normalize accumulated HPCP
-            const maxVal = Math.max(...hpcpAccum);
-            if (maxVal > 0) {
-                for (let i = 0; i < 12; i++) {
-                    hpcpAccum[i] /= maxVal;
-                }
-            }
-            
-            console.log('Accumulated HPCP:', Array.from(hpcpAccum).map(v => v.toFixed(3)));
-            
-            // Method 1: Use Essentia's Key algorithm
-            let essentiaKey = null;
-            try {
-                const hpcpVector = essentia.arrayToVector(hpcpAccum);
-                const keyResult = essentia.Key(
-                    hpcpVector,
-                    4,              // numHarmonics
-                    'bgate',        // profileType - try different profiles
-                    0.6,            // slope
-                    true,           // useMajMin
-                    true,           // usePolyphony
-                    true            // useThreeChords
-                );
-                
-                essentiaKey = {
-                    key: keyResult.key,
-                    scale: keyResult.scale,
-                    strength: keyResult.strength
-                };
-                
-                console.log('Essentia Key (bgate):', essentiaKey.key, essentiaKey.scale, 'strength:', essentiaKey.strength);
             } catch (e) {
-                console.warn('Essentia Key failed:', e.message);
+                console.warn('Key detection error:', e);
             }
             
-            // Method 2: Manual correlation with profiles
-            const manualKey = findKeyFromHPCP(hpcpAccum);
-            console.log('Manual Key Detection:', manualKey.key, manualKey.scale, 'correlation:', manualKey.correlation);
-            
-            // Method 3: Check voting results
-            let votedKey = null;
-            let maxVotes = 0;
-            for (const [keyStr, votes] of Object.entries(keyVotes)) {
-                if (votes > maxVotes) {
-                    maxVotes = votes;
-                    const [key, scale] = keyStr.split(' ');
-                    votedKey = { key, scale, votes };
-                }
-            }
-            console.log('Voted Key:', votedKey?.key, votedKey?.scale, 'votes:', votedKey?.votes);
-            
-            // Combine results - prefer minor keys if detected (often missed)
-            let finalKey, finalScale, finalConfidence;
-            
-            // Check if multiple methods agree on minor
-            const minorCount = [
-                essentiaKey?.scale === 'minor' ? 1 : 0,
-                manualKey?.scale === 'minor' ? 1 : 0,
-                votedKey?.scale === 'minor' ? 1 : 0
-            ].reduce((a, b) => a + b, 0);
-            
-            // Check if methods agree
-            const keys = [essentiaKey?.key, manualKey?.key, votedKey?.key].filter(k => k);
-            const keyCount = {};
-            keys.forEach(k => keyCount[k] = (keyCount[k] || 0) + 1);
-            
-            let mostCommonKey = null;
-            let maxKeyCount = 0;
-            for (const [k, count] of Object.entries(keyCount)) {
-                if (count > maxKeyCount) {
-                    maxKeyCount = count;
-                    mostCommonKey = k;
-                }
-            }
-            
-            // Decision logic
-            if (maxKeyCount >= 2) {
-                // Multiple methods agree on key
-                finalKey = mostCommonKey;
-                finalScale = minorCount >= 2 ? 'minor' : (essentiaKey?.scale || manualKey?.scale || 'major');
-                finalConfidence = Math.min(95, 70 + maxKeyCount * 10);
-            } else if (essentiaKey && essentiaKey.strength > 0.5) {
-                // Trust Essentia if confidence is high
-                finalKey = essentiaKey.key;
-                finalScale = essentiaKey.scale;
-                finalConfidence = Math.min(90, Math.round(essentiaKey.strength * 100));
-            } else {
-                // Fall back to manual detection
-                finalKey = manualKey.key;
-                finalScale = manualKey.scale;
-                finalConfidence = Math.min(85, Math.round(50 + manualKey.correlation * 40));
-            }
-            
-            console.log('Final Key:', finalKey, finalScale, 'confidence:', finalConfidence);
-            
-            return {
-                key: finalKey,
-                scale: finalScale,
-                confidence: finalConfidence
-            };
+            return { bpm, bpmConfidence, key, scale, keyConfidence };
         }
 
-        // Find key from HPCP using correlation
-        function findKeyFromHPCP(hpcp) {
-            let bestKey = 'C';
-            let bestScale = 'major';
-            let bestCorrelation = -Infinity;
+        // Fallback analysis (if Essentia fails)
+        function fallbackAnalysis(audioBuffer) {
+            const data = audioBuffer.getChannelData(0);
+            const sampleRate = audioBuffer.sampleRate;
             
-            // Normalize HPCP
-            const maxHpcp = Math.max(...hpcp);
-            const normalizedHpcp = hpcp.map(v => maxHpcp > 0 ? v / maxHpcp : 0);
+            // Simple peak-based BPM
+            let bpm = 120;
+            let bpmConfidence = 60;
             
-            for (let shift = 0; shift < 12; shift++) {
-                // Rotate HPCP to test each key
-                const rotated = rotateArray(Array.from(normalizedHpcp), shift);
-                
-                // Test major (using both profiles)
-                const majorCorr1 = pearsonCorrelation(rotated, MAJOR_PROFILE);
-                const majorCorr2 = pearsonCorrelation(rotated, MAJOR_TEMPERLEY);
-                const majorCorr = Math.max(majorCorr1, majorCorr2);
-                
-                // Test minor (using both profiles)
-                const minorCorr1 = pearsonCorrelation(rotated, MINOR_PROFILE);
-                const minorCorr2 = pearsonCorrelation(rotated, MINOR_TEMPERLEY);
-                const minorCorr = Math.max(minorCorr1, minorCorr2);
-                
-                if (majorCorr > bestCorrelation) {
-                    bestCorrelation = majorCorr;
-                    bestKey = NOTE_NAMES[shift];
-                    bestScale = 'major';
+            // Downsample and find peaks
+            const windowSize = Math.floor(sampleRate / 10);
+            const energies = [];
+            
+            for (let i = 0; i < data.length - windowSize; i += windowSize) {
+                let energy = 0;
+                for (let j = 0; j < windowSize; j++) {
+                    energy += data[i + j] * data[i + j];
                 }
-                
-                if (minorCorr > bestCorrelation) {
-                    bestCorrelation = minorCorr;
-                    bestKey = NOTE_NAMES[shift];
-                    bestScale = 'minor';
+                energies.push(energy / windowSize);
+            }
+            
+            // Find peaks
+            const threshold = Math.max(...energies) * 0.4;
+            const peaks = [];
+            for (let i = 1; i < energies.length - 1; i++) {
+                if (energies[i] > energies[i-1] && energies[i] > energies[i+1] && energies[i] > threshold) {
+                    peaks.push(i);
                 }
             }
             
+            if (peaks.length >= 4) {
+                const intervals = [];
+                for (let i = 1; i < peaks.length; i++) {
+                    intervals.push(peaks[i] - peaks[i-1]);
+                }
+                const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+                bpm = Math.round(600 / avgInterval); // 60 seconds / (interval * 0.1 seconds)
+                
+                while (bpm < 60) bpm *= 2;
+                while (bpm > 180) bpm /= 2;
+            }
+            
             return {
-                key: bestKey,
-                scale: bestScale,
-                correlation: bestCorrelation
+                bpm,
+                bpmConfidence,
+                key: 'C',
+                scale: 'major',
+                keyConfidence: 50
             };
         }
 
         // Main processing function
         async function processFile(file) {
-            console.log('=== Processing:', file.name, '===');
+            console.log('Processing:', file.name, file.type, file.size);
             
             errorMsg.style.display = 'none';
             dropZone.style.display = 'none';
@@ -1207,9 +1029,11 @@
             showLoader('Loading audio...', 'Decoding file');
 
             try {
+                // Create audio URL
                 const audioURL = URL.createObjectURL(file);
                 document.getElementById('audioPlayer').src = audioURL;
                 
+                // Read and decode audio
                 const arrayBuffer = await file.arrayBuffer();
                 
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)({
@@ -1219,7 +1043,7 @@
                 showLoader('Decoding audio...', 'Please wait');
                 
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                console.log('Audio:', audioBuffer.duration.toFixed(1) + 's,', audioBuffer.sampleRate + 'Hz');
+                console.log('Decoded:', audioBuffer.duration + 's,', audioBuffer.sampleRate + 'Hz,', audioBuffer.numberOfChannels + 'ch');
                 
                 // Get mono audio data
                 let monoData;
@@ -1234,29 +1058,32 @@
                     monoData = new Float32Array(audioBuffer.getChannelData(0));
                 }
                 
-                if (!isReady || !essentia) {
-                    throw new Error('Analyzer not ready. Please refresh and try again.');
+                let analysisResult;
+                
+                // Try Essentia first
+                if (isReady && essentiaInstance) {
+                    showLoader('Analyzing with Essentia...', 'Detecting BPM & Key');
+                    await new Promise(r => setTimeout(r, 50)); // Let UI update
+                    
+                    try {
+                        analysisResult = analyzeWithEssentia(monoData, audioBuffer.sampleRate);
+                    } catch (e) {
+                        console.error('Essentia analysis failed:', e);
+                        showLoader('Using fallback...', 'Analyzing');
+                        analysisResult = fallbackAnalysis(audioBuffer);
+                    }
+                } else {
+                    showLoader('Analyzing...', 'Processing audio');
+                    analysisResult = fallbackAnalysis(audioBuffer);
                 }
-                
-                // BPM Detection
-                showLoader('Detecting BPM...', 'Analyzing rhythm patterns');
-                await new Promise(r => setTimeout(r, 50));
-                
-                const bpmResult = detectBPM(monoData, audioBuffer.sampleRate);
-                
-                // Key Detection
-                showLoader('Analyzing key...', 'Processing harmonic content');
-                await new Promise(r => setTimeout(r, 50));
-                
-                const keyResult = detectKey(monoData, audioBuffer.sampleRate);
                 
                 // Show results
                 showResults({
-                    bpm: bpmResult.bpm,
-                    bpmConf: bpmResult.confidence,
-                    key: keyResult.key,
-                    scale: keyResult.scale,
-                    keyConf: keyResult.confidence,
+                    bpm: analysisResult.bpm,
+                    bpmConf: analysisResult.bpmConfidence,
+                    key: analysisResult.key,
+                    scale: analysisResult.scale,
+                    keyConf: analysisResult.keyConfidence,
                     duration: audioBuffer.duration
                 }, file.name);
                 
