@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RapperStore - BPM & Key Finder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            background: transparent;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .widget {
+            background: linear-gradient(165deg, rgba(22, 18, 32, 0.98), rgba(12, 10, 20, 0.99));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 24px;
+            max-width: 380px;
+            width: 100%;
+            margin: 0 auto;
+            box-shadow: 
+                0 25px 80px rgba(138, 43, 226, 0.15),
+                0 10px 40px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(138, 43, 226, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated background glow */
+        .widget::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(138, 43, 226, 0.08) 0%, transparent 50%);
+            animation: rotateGlow 15s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes rotateGlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Floating particles */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(168, 85, 247, 0.4);
+            border-radius: 50%;
+            animation: float 8s infinite ease-in-out;
+        }
+
+        .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 30%; animation-delay: 1.5s; }
+        .particle:nth-child(3) { left: 50%; animation-delay: 3s; }
+        .particle:nth-child(4) { left: 70%; animation-delay: 4.5s; }
+        .particle:nth-child(5) { left: 90%; animation-delay: 6s; }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(100%) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(80%) scale(1);
+            }
+            90% {
+                opacity: 1;
+                transform: translateY(-80%) scale(1);
+            }
+            100% {
+                transform: translateY(-100%) scale(0);
+                opacity: 0;
+            }
+        }
+
+        .widget-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .widget-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .widget-logo {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #7c3aed, #a855f7, #7c3aed);
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 13px;
+            color: #fff;
+            letter-spacing: -0.5px;
+            box-shadow: 
+                0 4px 20px rgba(139, 92, 246, 0.5),
+                0 0 30px rgba(139, 92, 246, 0.2);
+            position: relative;
+        }
+
+        .widget-logo::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #7c3aed, #a855f7, #c084fc);
+            z-index: -1;
+            opacity: 0.5;
+            filter: blur(8px);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+
+        .widget-title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .widget-title span {
+            background: linear-gradient(135deg, #a855f7, #c084fc, #e879f9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .widget-subtitle {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(139, 92, 246, 0.4);
+            border-radius: 16px;
+            padding: 36px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.05), rgba(139, 92, 246, 0.02));
+            animation: fadeInUp 0.6s ease-out 0.2s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(139, 92, 246, 0.1), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .drop-zone:hover::before,
+        .drop-zone.dragover::before {
+            opacity: 1;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #a855f7;
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.05));
+            transform: scale(1.02);
+            box-shadow: 0 10px 40px rgba(139, 92, 246, 0.2);
+        }
+
+        .drop-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.1));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 14px;
+            font-size: 28px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .drop-icon::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            animation: ripple 2s ease-out infinite;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.4);
+                opacity: 0;
+            }
+        }
+
+        .drop-zone:hover .drop-icon {
+            transform: scale(1.1) rotate(5deg);
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.2));
+        }
+
+        .drop-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.85);
+            transition: color 0.3s ease;
+        }
+
+        .drop-zone:hover .drop-text {
+            color: #fff;
+        }
+
+        .drop-text small {
+            display: block;
+            margin-top: 8px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.35);
+            font-weight: 400;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 40px 16px;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        .spinner-container {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 16px;
+        }
+
+        .spinner {
+            width: 100%;
+            height: 100%;
+            border: 3px solid rgba(139, 92, 246, 0.1);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .spinner-inner {
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-top-color: #a855f7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            position: absolute;
+        }
+
+        .spinner-outer {
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-right-color: #7c3aed;
+            border-radius: 50%;
+            animation: spinReverse 1.2s linear infinite;
+            position: absolute;
+        }
+
+        .spinner-dot {
+            width: 8px;
+            height: 8px;
+            background: #c084fc;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulseDot 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes spinReverse {
+            to { transform: rotate(-360deg); }
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.5; }
+        }
+
+        .loader-text {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 500;
+            animation: textPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes textPulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .results {
+            display: none;
+            animation: resultsReveal 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes resultsReveal {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .track-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.03));
+            border-radius: 14px;
+            margin-bottom: 18px;
+            border: 1px solid rgba(139, 92, 246, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .track-row:hover {
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.05));
+            border-color: rgba(139, 92, 246, 0.25);
+        }
+
+        .track-icon {
+            width: 46px;
+            height: 46px;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+            animation: iconBounce 2s ease-in-out infinite;
+        }
+
+        @keyframes iconBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        .track-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .track-name {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .track-duration {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 2px;
+        }
+
+        .reset-btn {
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #c084fc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reset-btn:hover {
+            background: rgba(139, 92, 246, 0.3);
+            border-color: rgba(139, 92, 246, 0.4);
+            transform: rotate(180deg) scale(1.1);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .metric {
+            background: linear-gradient(165deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.03));
+            border-radius: 16px;
+            padding: 20px 10px;
+            text-align: center;
+            border: 1px solid rgba(139, 92, 246, 0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .metric:hover::before {
+            left: 100%;
+        }
+
+        .metric:hover {
+            border-color: rgba(139, 92, 246, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a855f7, #c084fc, #e879f9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+            letter-spacing: -0.5px;
+            position: relative;
+        }
+
+        .metric-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        .confidence-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .confidence-item {
+            flex: 1;
+            background: rgba(139, 92, 246, 0.05);
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid rgba(139, 92, 246, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .confidence-item:hover {
+            background: rgba(139, 92, 246, 0.08);
+            border-color: rgba(139, 92, 246, 0.15);
+        }
+
+        .confidence-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .confidence-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .confidence-value {
+            font-size: 11px;
+            color: #c084fc;
+            font-weight: 700;
+        }
+
+        .confidence-bar {
+            height: 6px;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7c3aed, #a855f7, #c084fc);
+            border-radius: 3px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .confidence-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .compatible-section {
+            background: linear-gradient(165deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.04));
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid rgba(139, 92, 246, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .compatible-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 60%);
+            animation: floatBg 10s ease-in-out infinite;
+        }
+
+        @keyframes floatBg {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-20px, 20px); }
+        }
+
+        .compatible-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+
+        .compatible-keys {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            position: relative;
+        }
+
+        .key-tag {
+            background: rgba(139, 92, 246, 0.2);
+            color: #d8b4fe;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(139, 92, 246, 0.25);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: default;
+            animation: tagAppear 0.4s ease-out both;
+        }
+
+        .key-tag:nth-child(1) { animation-delay: 0.1s; }
+        .key-tag:nth-child(2) { animation-delay: 0.2s; }
+        .key-tag:nth-child(3) { animation-delay: 0.3s; }
+        .key-tag:nth-child(4) { animation-delay: 0.4s; }
+
+        @keyframes tagAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .key-tag:first-child {
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .key-tag:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .key-tag:first-child:hover {
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
+        }
+
+        .error-msg {
+            display: none;
+            background: linear-gradient(145deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            text-align: center;
+            font-weight: 500;
+            animation: shake 0.5s ease-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        .audio-player {
+            margin-top: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 6px;
+            border: 1px solid rgba(139, 92, 246, 0.1);
+        }
+
+        .audio-player audio {
+            width: 100%;
+            height: 42px;
+            border-radius: 8px;
+        }
+
+        audio::-webkit-media-controls-panel {
+            background: linear-gradient(145deg, rgba(30, 25, 45, 0.9), rgba(20, 15, 35, 0.9));
+        }
+
+        .powered-by {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.2);
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .powered-by:hover {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .powered-by a {
+            color: rgba(168, 85, 247, 0.6);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .powered-by a:hover {
+            color: rgba(168, 85, 247, 0.9);
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 400px) {
+            .widget {
+                padding: 18px;
+                border-radius: 20px;
+            }
+
+            .metrics {
+                gap: 8px;
+            }
+
+            .metric {
+                padding: 16px 8px;
+            }
+
+            .metric-value {
+                font-size: 24px;
+            }
+
+            .widget-title {
+                font-size: 16px;
+            }
+
+            .drop-zone {
+                padding: 28px 14px;
+            }
+
+            .drop-icon {
+                width: 56px;
+                height: 56px;
+                font-size: 24px;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="widget">
+        <div class="particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+
+        <div class="widget-content">
+            <div class="widget-header">
+                <div class="widget-logo">RS</div>
+                <div>
+                    <div class="widget-title"><span>Rapper</span>Store</div>
+                    <div class="widget-subtitle">BPM & Key Finder</div>
+                </div>
+            </div>
+
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-icon">🎵</div>
+                <div class="drop-text">
+                    Drop your track or tap to browse
+                    <small>MP3 • WAV • FLAC • OGG • M4A</small>
+                </div>
+                <input type="file" id="fileInput" accept="audio/*">
+            </div>
+
+            <div class="loader" id="loader">
+                <div class="spinner-container">
+                    <div class="spinner"></div>
+                    <div class="spinner-inner"></div>
+                    <div class="spinner-outer"></div>
+                    <div class="spinner-dot"></div>
+                </div>
+                <div class="loader-text" id="loaderText">Analyzing...</div>
+            </div>
+
+            <div class="error-msg" id="errorMsg"></div>
+
+            <div class="results" id="results">
+                <div class="track-row">
+                    <div class="track-icon">🔥</div>
+                    <div class="track-info">
+                        <div class="track-name" id="trackName">Track Name</div>
+                        <div class="track-duration" id="trackDuration">0:00</div>
+                    </div>
+                    <button class="reset-btn" id="resetBtn" title="Analyze another">↺</button>
+                </div>
+
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-value" id="bpmValue">--</div>
+                        <div class="metric-label">BPM</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="keyValue">--</div>
+                        <div class="metric-label">Key</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="camelotValue">--</div>
+                        <div class="metric-label">Camelot</div>
+                    </div>
+                </div>
+
+                <div class="confidence-row">
+                    <div class="confidence-item">
+                        <div class="confidence-header">
+                            <span class="confidence-label">BPM Accuracy</span>
+                            <span class="confidence-value" id="bpmConfVal">0%</span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="bpmConf" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="confidence-item">
+                        <div class="confidence-header">
+                            <span class="confidence-label">Key Accuracy</span>
+                            <span class="confidence-value" id="keyConfVal">0%</span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="keyConf" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="compatible-section">
+                    <div class="compatible-title">🎧 Harmonic Mix Keys</div>
+                    <div class="compatible-keys" id="compatibleKeys"></div>
+                </div>
+
+                <div class="audio-player">
+                    <audio id="audioPlayer" controls></audio>
+                </div>
+            </div>
+
+            <div class="powered-by">
+                <a href="https://rapperstore.com" target="_blank">rapperstore.com</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CAMELOT = {
+            'C major': '8B', 'G major': '9B', 'D major': '10B', 'A major': '11B',
+            'E major': '12B', 'B major': '1B', 'F# major': '2B', 'Gb major': '2B',
+            'Db major': '3B', 'C# major': '3B', 'Ab major': '4B', 'G# major': '4B',
+            'Eb major': '5B', 'D# major': '5B', 'Bb major': '6B', 'A# major': '6B',
+            'F major': '7B',
+            'A minor': '8A', 'E minor': '9A', 'B minor': '10A', 'F# minor': '11A',
+            'Gb minor': '11A', 'C# minor': '12A', 'Db minor': '12A', 'G# minor': '1A',
+            'Ab minor': '1A', 'D# minor': '2A', 'Eb minor': '2A', 'A# minor': '3A',
+            'Bb minor': '3A', 'F minor': '4A', 'C minor': '5A', 'G minor': '6A',
+            'D minor': '7A'
+        };
+
+        function getCompatibleKeys(code) {
+            if (!code || code === '--') return [];
+            const num = parseInt(code);
+            const letter = code.slice(-1);
+            const other = letter === 'A' ? 'B' : 'A';
+            return [
+                code,
+                ((num % 12) + 1 || 12) + letter,
+                ((num - 2 + 12) % 12 + 1) + letter,
+                num + other
+            ];
+        }
+
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return `${m}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const loader = document.getElementById('loader');
+        const loaderText = document.getElementById('loaderText');
+        const results = document.getElementById('results');
+        const errorMsg = document.getElementById('errorMsg');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let essentia = null;
+        let essentiaReady = false;
+
+        async function loadEssentia() {
+            return new Promise((resolve, reject) => {
+                const wasmScript = document.createElement('script');
+                wasmScript.src = 'https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js';
+                wasmScript.onload = () => {
+                    const coreScript = document.createElement('script');
+                    coreScript.src = 'https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia.js-core.js';
+                    coreScript.onload = async () => {
+                        try {
+                            const wasmModule = await EssentiaWASM();
+                            essentia = new Essentia(wasmModule);
+                            essentiaReady = true;
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        }
+                    };
+                    coreScript.onerror = reject;
+                    document.head.appendChild(coreScript);
+                };
+                wasmScript.onerror = reject;
+                document.head.appendChild(wasmScript);
+            });
+        }
+
+        async function analyze(audioBuffer) {
+            let mono;
+            if (audioBuffer.numberOfChannels > 1) {
+                mono = new Float32Array(audioBuffer.length);
+                const L = audioBuffer.getChannelData(0);
+                const R = audioBuffer.getChannelData(1);
+                for (let i = 0; i < audioBuffer.length; i++) {
+                    mono[i] = (L[i] + R[i]) / 2;
+                }
+            } else {
+                mono = new Float32Array(audioBuffer.getChannelData(0));
+            }
+
+            const signal = essentia.arrayToVector(mono);
+
+            loaderText.textContent = 'Detecting BPM...';
+            const rhythm = essentia.RhythmExtractor2013(signal, 208, 40);
+            const bpm = Math.round(rhythm.bpm);
+            const bpmConf = Math.min(rhythm.confidence * 100, 100);
+
+            loaderText.textContent = 'Analyzing key...';
+            const keyResult = analyzeKey(mono, audioBuffer.sampleRate);
+
+            return {
+                bpm,
+                bpmConf,
+                key: keyResult.key,
+                scale: keyResult.scale,
+                keyConf: keyResult.confidence * 100,
+                duration: audioBuffer.duration
+            };
+        }
+
+        function analyzeKey(audio, sr) {
+            const frameSize = 4096;
+            const hopSize = 2048;
+            const votes = {};
+            const maxFrames = Math.min(Math.floor((audio.length - frameSize) / hopSize), 80);
+
+            for (let i = 0; i < maxFrames; i++) {
+                const start = i * hopSize;
+                const frame = audio.slice(start, start + frameSize);
+                const frameArray = new Float32Array(frame);
+                const frameVec = essentia.arrayToVector(frameArray);
+                
+                const windowed = essentia.Windowing(frameVec, true, frameSize, 'hann', 0, true);
+                const spectrum = essentia.Spectrum(windowed.frame, frameSize);
+                
+                const peaks = essentia.SpectralPeaks(
+                    spectrum.spectrum, -100, 10000, 100, 20, 'magnitude', sr
+                );
+                
+                const hpcp = essentia.HPCP(
+                    peaks.frequencies, peaks.magnitudes,
+                    true, 500, 0, 4000, 40, false, 'unitMax', sr, 100, 0.5, 'cosine', 1
+                );
+
+                const key = essentia.Key(hpcp.hpcp, 4, 'temperley', 0.6, true);
+                const name = `${key.key} ${key.scale}`;
+                
+                if (!votes[name]) votes[name] = { count: 0, strength: 0 };
+                votes[name].count++;
+                votes[name].strength += key.strength;
+            }
+
+            let best = { key: 'C', scale: 'major', confidence: 0 };
+            let maxScore = 0;
+
+            for (const [name, data] of Object.entries(votes)) {
+                const score = data.count * (data.strength / data.count);
+                if (score > maxScore) {
+                    maxScore = score;
+                    const [k, s] = name.split(' ');
+                    best = { key: k, scale: s, confidence: data.strength / data.count };
+                }
+            }
+
+            return best;
+        }
+
+        function showResults(data, fileName) {
+            document.getElementById('trackName').textContent = fileName;
+            document.getElementById('trackDuration').textContent = formatTime(data.duration);
+            document.getElementById('bpmValue').textContent = data.bpm;
+            document.getElementById('keyValue').textContent = `${data.key}${data.scale === 'minor' ? 'm' : ''}`;
+            
+            const camelot = CAMELOT[`${data.key} ${data.scale}`] || '--';
+            document.getElementById('camelotValue').textContent = camelot;
+            
+            const bpmConfRounded = Math.round(data.bpmConf);
+            const keyConfRounded = Math.round(data.keyConf);
+            
+            // Animate confidence bars
+            setTimeout(() => {
+                document.getElementById('bpmConf').style.width = `${bpmConfRounded}%`;
+                document.getElementById('keyConf').style.width = `${keyConfRounded}%`;
+            }, 100);
+            
+            document.getElementById('bpmConfVal').textContent = `${bpmConfRounded}%`;
+            document.getElementById('keyConfVal').textContent = `${keyConfRounded}%`;
+
+            const compat = getCompatibleKeys(camelot);
+            document.getElementById('compatibleKeys').innerHTML = 
+                compat.map(k => `<span class="key-tag">${k}</span>`).join('');
+
+            loader.style.display = 'none';
+            results.style.display = 'block';
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+            loader.style.display = 'none';
+        }
+
+        function reset() {
+            results.style.display = 'none';
+            errorMsg.style.display = 'none';
+            dropZone.style.display = 'block';
+            fileInput.value = '';
+            
+            // Reset confidence bars
+            document.getElementById('bpmConf').style.width = '0%';
+            document.getElementById('keyConf').style.width = '0%';
+        }
+
+        async function processFile(file) {
+            errorMsg.style.display = 'none';
+            dropZone.style.display = 'none';
+            results.style.display = 'none';
+            loader.style.display = 'block';
+
+            try {
+                if (!essentiaReady) {
+                    loaderText.textContent = 'Loading analyzer...';
+                    await loadEssentia();
+                }
+
+                loaderText.textContent = 'Decoding audio...';
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const arrayBuf = await file.arrayBuffer();
+                const audioBuf = await ctx.decodeAudioData(arrayBuf);
+
+                document.getElementById('audioPlayer').src = URL.createObjectURL(file);
+
+                const data = await analyze(audioBuf);
+                showResults(data, file.name);
+
+                await ctx.close();
+            } catch (e) {
+                console.error(e);
+                showError('Error analyzing file. Try another format.');
+                dropZone.style.display = 'block';
+            }
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file?.type.startsWith('audio/')) {
+                processFile(file);
+            } else {
+                showError('Please drop an audio file');
+            }
+        });
+
+        fileInput.addEventListener('change', e => {
+            if (e.target.files[0]) processFile(e.target.files[0]);
+        });
+
+        resetBtn.addEventListener('click', reset);
+    </script>
+</body>
+</html>
